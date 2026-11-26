@@ -13,7 +13,7 @@ The page then produces a consolidated scope document to print and sign.
 
 It is a **mapping tool, not a prescribing guide**. It contains no doses and makes no clinical risk judgements. Nothing is sent anywhere. The page runs entirely in the browser; your draft and details are kept in that browser's storage as you go, and can be saved to a file. A finished scope can be kept on your own phone too, if you choose to.
 
-**Demo:** https://transilluminate.github.io/scope-builder/ (published from `main` by `.github/workflows/pages.yml`).
+**Demo:** https://transilluminate.org/scope-builder/ (published from `main` by `.github/workflows/pages.yml`).
 
 ## Using it
 
