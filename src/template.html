@@ -1,0 +1,1009 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prescribing Scope Builder</title>
+<!--__HEAD__-->
+<style>/*__CSS__*/</style>
+</head>
+<body>
+<header class="appbar no-print"><div class="in">
+  <a class="brand" href="#build">Prescribing Scope Builder<span id="trustShort"></span></a>
+  <nav class="modes" aria-label="Your scope">
+    <a href="#build" data-mode="build">Build</a>
+    <a href="#check" data-mode="check">Check</a>
+    <a href="#document" data-mode="document">Document <span class="tcount" id="tabCount"></span></a>
+  </nav>
+  <details class="more" id="more"><summary>Menu</summary><div class="menu">
+    <a href="about.html">About</a><a href="legal.html">Legal basis</a><a href="fingerprint.html">Fingerprints</a><a href="../index.html">All Trusts</a>
+    <hr>
+    <label class="mi">Open a saved file…<input type="file" id="load" accept=".json,application/json" hidden></label>
+    <button type="button" class="mi" id="save">Save to a file</button>
+    <button type="button" class="mi" id="startOver">Start over</button>
+  </div></details>
+</div></header>
+<div class="wrap">
+  <div class="strip no-print" id="strip"></div>
+  <div class="card linkbar no-print" id="linkBar" hidden></div>
+
+  <!-- Build: your own draft, saved on this device as you go -->
+  <section id="buildMode">
+    <details class="card setup no-print" id="setup" open>
+      <summary><span class="ttl">Your setup</span><span class="sumchips" id="sumChips"></span><span class="chev" id="setupChev">Hide</span></summary>
+      <div class="setup-body">
+        <section class="step">
+          <h3><span class="num">1</span><label for="prof">Your professional background</label></h3>
+          <select id="prof"></select>
+          <div class="legal" id="legalBox"></div>
+        </section>
+        <section class="step">
+          <h3><span class="num">2</span>Profiles: pick any that fit your role</h3>
+          <div class="pchips" id="profBox" role="group" aria-label="Profiles"></div>
+          <label class="check"><input type="checkbox" id="wholeMenu"> Also show the whole menu</label>
+        </section>
+        <div class="setup-actions"><button class="btn primary" type="button" id="setupDone">Done: show the medicines</button></div>
+      </div>
+    </details>
+
+    <div class="toolbar no-print">
+      <input type="search" id="q" placeholder="Search medicines or routes" aria-label="Search">
+      <select id="groupBy" aria-label="Group by"></select>
+      <select id="show" aria-label="Show">
+        <option value="all">Show all</option>
+        <option value="todo">Not reviewed</option>
+        <option value="chosen">Reviewed</option>
+        <option value="blocked">Not legally permitted</option>
+      </select>
+      <label class="chk"><input type="checkbox" id="coreOnly"> Core only</label>
+      <button class="btn" id="coreInclude" type="button" title="Sets every unreviewed route in the Core profile to Include">Include all Core</button>
+      <button class="btn" id="expandAll" type="button">Expand all</button>
+      <span class="progress" id="progress"></span>
+      <div class="progressbar" aria-hidden="true"><i id="pbar"></i></div>
+    </div>
+    <div id="groups"></div>
+
+    <div class="card next no-print" id="nextStep">
+      <div><h2>Next: check it, then print or share it</h2><p class="small muted" id="nextNote"></p></div>
+      <div class="nextbtns"><a class="btn primary" href="#check">Check →</a><a class="btn" href="#document">Document →</a></div>
+    </div>
+
+    <div class="card no-print small">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <button class="btn" id="saveProfile" type="button" title="Saves what you have included as a new profile, without your profession or personal details">Save as profile</button>
+        <button class="btn" id="clear" type="button">Clear all decisions</button>
+      </div>
+      <details class="data" style="margin-top:12px">
+        <summary>Use your own Trust's data</summary>
+        <p class="muted">Drop in any of <code>menu.csv</code>, <code>profiles.csv</code>, <code>formulary.csv</code>, <code>trust.csv</code>, <code>medicines.csv</code>, or a profile file (columns <code>medicine_id,route,core</code>), which is added as an extra profile. Files are read in this browser only and replace the built-in tables until you reload.</p>
+        <input type="file" id="dataFiles" accept=".csv,text/csv" multiple>
+      </details>
+      <ul class="warnlist" id="dataWarnings"></ul>
+    </div>
+  </section>
+
+  <!-- Build while a shared scope is open: editing happens on a copy -->
+  <section id="linkBuild" class="card no-print" hidden></section>
+
+  <!-- Check: "Can I prescribe...?" for whichever scope is open -->
+  <section id="checkMode" hidden>
+    <div class="card vhead">
+      <div class="vtitle"><h1>Prescribing scope</h1><span class="muted small" id="vTrust"></span></div>
+      <details class="vfp" id="vFpBox">
+        <summary><span class="muted small">Fingerprint</span><span id="vCode"></span><span class="chev">Details</span></summary>
+        <div class="fpbox" id="vFp"></div>
+        <p class="small muted">Check this fingerprint against your Trust's record of your signed scope. If it doesn't match, this isn't the scope you were signed off for.</p>
+        <div id="vWorking"></div><p class="small muted" id="vContext"></p>
+      </details>
+      <div class="vgrid">
+        <div><label class="f" for="vProf">Your professional background</label><select id="vProf"></select></div>
+        <div class="vcounts" id="vCounts"></div>
+      </div>
+      <div class="vwarn" id="vWarn"></div>
+    </div>
+    <div class="vsearch">
+      <label class="f" for="vq">Can I prescribe…?</label>
+      <input type="search" id="vq" placeholder="Medicine, route or presentation, e.g. morphine IV" aria-label="Search your scope" enterkeyhint="search" autocomplete="off">
+    </div>
+    <div id="vResults"></div>
+  </section>
+
+  <!-- Document: your details, then print, link, keep, CSV -->
+  <section id="docMode" hidden>
+    <div class="card no-print step-card">
+      <h3><span class="num">✎</span>Your details <span class="opt">Optional: printed on the document. Kept on this device only, never put in a scope link.</span></h3>
+      <div class="details-grid" id="personBox"></div>
+      <p class="small" style="margin:10px 0 0"><button type="button" class="linkbtn" id="forgetMe">Forget my details on this device</button></p>
+    </div>
+    <div class="no-print docbar">
+      <button class="btn primary" id="print" type="button">Print / save as PDF</button>
+      <button class="btn" id="share" type="button">Get scope link</button>
+      <button class="btn" id="csv" type="button">Download as CSV</button>
+    </div>
+    <div class="card share no-print" id="shareBox" hidden>
+      <div class="fp-row"><span class="muted small">Scope fingerprint</span><span class="fpbox" id="shareFp"></span></div>
+      <div class="share-row"><input type="text" id="shareUrl" readonly aria-label="Scope link"><button class="btn primary" id="copyUrl" type="button">Copy link</button></div>
+      <p class="small muted" id="shareNote"></p>
+      <div id="shareWorking"></div>
+    </div>
+    <div class="card vkeep no-print" id="vKeep"></div>
+    <article class="doc" id="doc"></article>
+  </section>
+</div>
+
+<script id="data" type="application/json">/*__DATA__*/</script>
+<script>
+(() => {
+'use strict';
+// ---------- helpers ----------
+function parseCSV(text) {
+  text = text.replace(/^﻿/, '');
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(f); f = ''; if (row.some(x => x.trim() !== '')) rows.push(row); row = [];
+    } else f += c;
+  }
+  row.push(f); if (row.some(x => x.trim() !== '')) rows.push(row);
+  const head = (rows.shift() || []).map(h => h.trim());
+  return { head, rows: rows.map(r => Object.fromEntries(head.map((h, i) => [h, (r[i] || '').trim()]))) };
+}
+const yes = v => /^(y|yes|true|1|x)$/i.test(String(v).trim());
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = id => document.getElementById(id);
+
+// ---------- constants ----------
+const RAW = JSON.parse($('data').textContent);
+const DECISIONS = [
+  ['', 'Not reviewed'],
+  ['include', 'Include'],
+  ['restricted', 'Include with restriction'],
+  ['continuation', 'Continuation only'],
+  ['specialist', 'On specialist advice only'],
+  ['emergency', 'Emergency use only'],
+  ['developmental', 'Developmental'],
+  ['exclude', 'Exclude'],
+];
+const DLABEL = Object.fromEntries(DECISIONS);
+const IN_SCOPE = new Set(['include', 'restricted', 'continuation', 'specialist', 'emergency']);
+const NOTE_FOR = { restricted: 'State the restriction, e.g. indication or setting', developmental: 'Development plan / evidence needed' };
+let M;
+
+// ---------- model ----------
+function buildModel() {
+  const t = name => parseCSV(RAW[name] || '');
+  const warn = [];
+  const professions = t('professions.csv').rows;
+  const cdNamed = t('cd_named.csv').rows;
+  const routeRows = t('routes.csv').rows;
+  const routes = Object.fromEntries(routeRows.map((r, i) => [r.route_id, { ...r, order: i }]));
+  const meds = Object.fromEntries(t('medicines.csv').rows.map(r => [r.medicine_id, r]));
+  // profiles: named subsets of the menu (ED Resus, UTC, ...); additive, any number can be ticked
+  const profiles = [...t('profiles.csv').rows, ...Object.values(RAW.__extraProfiles || {})].filter(p => RAW.__profiles?.[p.profile_id] != null);
+  const profById = Object.fromEntries(profiles.map(p => [p.profile_id, p]));
+  const trust = Object.fromEntries(t('trust.csv').rows.map(r => [r.key, r.value]));
+  const form = {};
+  t('formulary.csv').rows.forEach(r => { form[r.medicine_id + '|' + (r.route || '*')] = r; });
+  const dmdRoutes = Object.fromEntries(t('medicine_routes.csv').rows.map(r => [r.medicine_id + '|' + r.route, r]));
+  const dmdRelease = Object.fromEntries(t('dmd_release.csv').rows.map(r => [r.key, r.value]));
+  const menu = t('menu.csv');
+
+  const items = new Map();   // medicine|route -> item (the unit you decide on)
+  let unreviewed = 0;
+  menu.rows.forEach((r, i) => {
+    const line = i + 2;
+    if (!meds[r.medicine_id]) { warn.push(`menu.csv line ${line}: unknown medicine_id "${r.medicine_id}" (add it to medicines.csv)`); return; }
+    if (!routes[r.route]) { warn.push(`menu.csv line ${line}: unknown route "${r.route}" (see routes.csv)`); return; }
+    if (!r.reviewed) unreviewed++;
+    const key = r.medicine_id + '|' + r.route;
+    if (!items.has(key)) items.set(key, { key, med: meds[r.medicine_id], route: routes[r.route], uses: [], prof: {} });
+    items.get(key).uses.push({ system: r.system, presentation: r.presentation });
+  });
+  profiles.forEach(p => parseCSV(RAW.__profiles[p.profile_id]).rows.forEach((r, i) => {
+    const it = items.get(r.medicine_id + '|' + r.route);
+    if (!it) { warn.push(`profile ${p.profile_id} line ${i + 2}: ${r.medicine_id}|${r.route} is not on the menu`); return; }
+    it.prof[p.profile_id] = true;
+  }));
+  const systemOrder = [...new Set(menu.rows.map(r => r.system))];
+  const list = [...items.values()].sort((a, b) => a.med.name.localeCompare(b.med.name) || a.route.order - b.route.order);
+  return { professions, cdNamed, routes, meds, profiles, profById, trust, form, dmdRoutes, dmdRelease, systemOrder, items: list, itemByKey: items, warn, unreviewed, menuRows: menu.rows.length };
+}
+
+// ---------- rules ----------
+const fmtSch = s => s.replace('-', ' part ');
+// CD schedules for this medicine by this route: from dm+d products where we have them,
+// otherwise the medicine's own (most restrictive) schedule
+function routeSchedules(med, route) {
+  const d = M.dmdRoutes[med.medicine_id + '|' + route.route_id];
+  if (d) return d.cd_schedules ? d.cd_schedules.split(' ') : [];
+  return med.cd_schedule ? [med.cd_schedule] : [];
+}
+function legal(prof, med, route) {
+  const S = routeSchedules(med, route);
+  if (!prof) return { state: 'unset', cd: S.length > 0 };
+  if (!S.length) return { state: 'ok' };
+  const sch = S.length === 1 ? `Schedule ${fmtSch(S[0])} CD` : `Schedule ${S.map(fmtSch).join(' or ')} CD, depending on product`;
+  if (prof.cd_rule === 'any') return { state: 'ok', cd: true, reason: `${sch}, permitted (${prof.cd_regulation})` };
+  if (prof.cd_rule === 'named' && prof.schedule5 === 'any' && S.every(s => s === '5'))
+    return { state: 'ok', cd: true, reason: `${sch}: Schedule 5 not treated as needing a named listing` };
+  if (prof.cd_rule === 'named') {
+    const target = med.cd_ingredient || med.medicine_id;
+    const listed = M.cdNamed.filter(c => c.profession_id === prof.profession_id && c.medicine_id === target);
+    const via = med.cd_ingredient ? ` (contains ${M.meds[target]?.name || target})` : '';
+    if (!listed.length) return { state: 'blocked', cd: true, reason: `${sch}${via}: not on the ${prof.cd_regulation} list` };
+    const hit = listed.find(c => c.legal_class === route.legal_class);
+    const allowed = [...new Set(listed.map(c => c.legal_class))].join(' or ');
+    if (!hit) return { state: 'blocked', cd: true, reason: `${sch}${via}: ${prof.cd_regulation} allows ${listed[0].statute_name} by ${allowed} only` };
+    return { state: 'ok', cd: true, reason: `${sch}${via}, permitted at reg ${hit.regulation} for organic disease or injury` };
+  }
+  return { state: 'blocked', cd: true, reason: `${sch}: not permitted for this prescriber type` };
+}
+function fBadge(F) {
+  return F.f?.url ? `<a class="badge ${F.cls}" href="${esc(F.f.url)}" target="_blank" rel="noopener noreferrer" title="Open this section of the live formulary">${esc(F.label)} ↗</a>`
+    : `<span class="badge ${F.cls}">${esc(F.label)}</span>`;
+}
+function formulary(med, route) {
+  const f = (route && M.form[med.medicine_id + '|' + route.route_id]) || M.form[med.medicine_id + '|*'];
+  const s = (f?.status || '').toUpperCase();
+  if (s === 'Y') return { cls: 'b-ok', label: 'Formulary', f };
+  if (s === 'R') return { cls: 'b-warn', label: 'Formulary: restricted', f };
+  if (s === 'N') return { cls: 'b-warn', label: 'Not on formulary', f };
+  if (f?.note) return { cls: 'b-warn', label: 'Not found in formulary', f };
+  return { cls: 'b-mute', label: 'Formulary not checked', f };
+}
+
+// ---------- state ----------
+// Two scopes can be open: your own DRAFT (saved on this device as you go) and, when someone's link is opened,
+// that shared scope (LINK). `state` is whichever is showing. Your details (ME) belong to you, not to a scope.
+const newState = () => ({ prof: '', profiles: new Set(), wholeMenu: false, q: '', groupBy: 'system', show: 'all', coreOnly: false, dec: {}, open: new Set() });
+let DRAFT = newState(), state = DRAFT, LINK = null, ME = {}, MODE = 'build';
+const PERSON = [['name','Name'],['role','Role / job title'],['reg','Registration body & number'],['annotation','Prescriber annotation & date'],['supervisor','Clinical supervisor / DPP'],['date','Date','date'],['review','Review date','date']];
+const profObj = () => M.professions.find(p => p.profession_id === state.prof);
+const L = it => legal(profObj(), it.med, it.route);
+const inProfiles = it => Object.keys(it.prof).filter(p => state.profiles.has(p));
+// Core = profiles marked default in profiles.csv: the pan-hospital baseline, ticked for everyone
+const isCore = it => M.profiles.some(p => yes(p.default) && it.prof[p.profile_id]);
+// the menu you are working from: your profiles' items, or everything with "whole menu"
+const inView = it => state.wholeMenu || inProfiles(it).length > 0;
+const done = it => !!state.dec[it.key]?.d || L(it).state === 'blocked';
+function setDecision(key, d) {
+  if (!d) { delete state.dec[key]; return; }
+  const prev = state.dec[key];
+  state.dec[key] = { d, note: NOTE_FOR[d] && prev?.d === d ? prev.note : (NOTE_FOR[d] ? prev?.note || '' : '') };
+}
+
+// ---------- setup ----------
+function renderSetup() {
+  $('prof').innerHTML = '<option value="">Choose…</option>' + M.professions.map(p => `<option value="${esc(p.profession_id)}">${esc(p.name)}</option>`).join('');
+  $('prof').value = state.prof;
+  const count = id => M.items.filter(it => it.prof[id]).length;
+  $('profBox').innerHTML = M.profiles.map(p => `<button type="button" class="pchip${yes(p.default) ? ' isdefault' : ''}" data-p="${esc(p.profile_id)}" aria-pressed="${state.profiles.has(p.profile_id)}"
+      title="${esc(p.description || '')}${p.reviewed ? '' : ' (not yet reviewed)'}">${esc(p.name)} <span class="n">${count(p.profile_id)}</span></button>`).join('')
+    || '<span class="muted small">No profiles yet: use "whole menu".</span>';
+  $('wholeMenu').checked = state.wholeMenu;
+  $('personBox').innerHTML = PERSON.map(([k, l, t]) => `<div><label class="f" for="p_${k}">${l}</label><input type="${t || 'text'}" id="p_${k}" data-k="${k}" value="${esc(ME[k] || '')}"></div>`).join('');
+  const T = M.trust, D = M.dmdRelease;
+  $('trustShort').textContent = T.trust_short || '';
+  document.title = `Prescribing Scope Builder${T.trust_short ? ' · ' + T.trust_short : ''}`;
+  $('strip').innerHTML = [
+    `<span><span class="warnmark">Proof of concept: not for live use.</span> Draft profiles, not clinically reviewed. No doses, no authority, nothing sent anywhere. <a href="about.html">Disclaimer</a></span>`,
+    ...(D.release_date && (Date.now() - Date.parse(D.release_date)) / 864e5 > 90
+      ? [`<span class="warnmark">Medicine data is over 3 months old (dm+d ${esc(fmtDate(D.release_date))}). Controlled-drug schedules may have changed since.</span>`] : []),
+    `<span>Data: ${[D.dmd_release && `dm+d ${esc(D.dmd_release.replace('Release ', ''))}`, T.formulary_name && `${esc(T.formulary_name)} ${esc(fmtDate(T.formulary_imported))}`, `built ${esc(fmtDate(RAW.__built))}`].filter(Boolean).join(' · ')}${M.unreviewed ? ` · <b>${M.unreviewed}/${M.menuRows} rows unreviewed</b>` : ''} · <a href="about.html#sources">sources</a></span>`,
+    ...(kept() ? [`<span><a href="#s=${esc(kept())}"><b>Open the scope kept on this device →</b></a></span>`] : []),
+  ].join('');
+  const hasBnf = Object.values(M.form).some(f => f.bnf_chapter);
+  $('groupBy').innerHTML = [['system', 'Group by clinical system'], ['profile', 'Group by profile'], ...(hasBnf ? [['bnf', 'Group by BNF chapter']] : []), ['az', 'Medicines A–Z']]
+    .map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+  if (![...$('groupBy').options].some(o => o.value === state.groupBy)) state.groupBy = 'system';
+  $('groupBy').value = state.groupBy;
+  $('dataWarnings').innerHTML = M.warn.map(w => `<li>${esc(w)}</li>`).join('');
+  renderLegalBox();
+}
+const fmtDate = d => { const x = new Date(d); return isNaN(x) ? (d || '') : x.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+const sch5Text = p => p.cd_rule === 'named' ? `<br><b>Schedule 5 preparations</b> (e.g. co-codamol, Entonox): ${p.schedule5 === 'named' ? 'treated as needing to be on the named list. This is the strict reading and still to be confirmed.' : 'not treated as needing to be on the named list.'}` : '';
+function renderLegalBox() {
+  const p = profObj();
+  $('legalBox').innerHTML = p ? [
+    `<span class="lk" title="${esc(p.cd_note)}"><b>CDs:</b> ${p.cd_rule === 'any' ? 'Schedules 2–5' : p.cd_rule === 'named' ? 'named list only' : 'none'} (${esc(p.cd_regulation.replace('MDR 2001 ', ''))})</span>`,
+    p.cd_rule === 'named' ? `<span class="lk"><b>Sch 5:</b> ${p.schedule5 === 'named' ? 'must be named (strict)' : 'allowed'}</span>` : '',
+    `<span class="lk"><b>Unlicensed:</b> ${yes(p.unlicensed) ? 'yes' : 'no'}</span>`,
+    `<a href="legal.html#${esc(p.profession_id)}">Full legal basis →</a>`].join('') : '<span class="muted small">Choose your profession to apply the legal rules. <a href="legal.html">Legal basis →</a></span>';
+}
+
+// ---------- picker ----------
+function visibleItems() {
+  const q = state.q.toLowerCase();
+  return M.items.filter(it => {
+    if (!inView(it)) return false;
+    if (state.coreOnly && !isCore(it)) return false;
+    if (q && !`${it.med.name} ${it.route.name} ${it.route.short} ${it.uses.map(u => u.system + ' ' + u.presentation).join(' ')}`.toLowerCase().includes(q)) return false;
+    const d = state.dec[it.key]?.d, blocked = L(it).state === 'blocked';
+    if (state.show === 'todo') return !d && !blocked;
+    if (state.show === 'chosen') return !!d;
+    if (state.show === 'blocked') return blocked;
+    return true;
+  });
+}
+// returns Map(groupName -> Map(medicine_id -> {med, items, uses}))
+function grouped(items) {
+  const g = new Map();
+  const add = (gname, it, uses) => {
+    if (!g.has(gname)) g.set(gname, new Map());
+    const meds = g.get(gname);
+    if (!meds.has(it.med.medicine_id)) meds.set(it.med.medicine_id, { med: it.med, items: [], pres: new Set() });
+    const m = meds.get(it.med.medicine_id);
+    if (!m.items.includes(it)) m.items.push(it);
+    uses.forEach(u => m.pres.add(u.presentation));
+  };
+  const usesIn = it => it.uses;
+  if (state.groupBy === 'system') {
+    items.forEach(it => { const by = {}; usesIn(it).forEach(u => (by[u.system] ||= []).push(u)); Object.entries(by).forEach(([s, us]) => add(s, it, us)); });
+  } else if (state.groupBy === 'profile') {
+    M.profiles.filter(p => state.profiles.has(p.profile_id)).forEach(p => items.filter(it => it.prof[p.profile_id]).forEach(it => add(p.name, it, it.uses)));
+    items.filter(it => !inProfiles(it).length).forEach(it => add('Outside your profiles', it, it.uses));
+  } else if (state.groupBy === 'bnf') {
+    const ch = it => M.form[it.med.medicine_id + '|*']?.bnf_chapter || 'Not yet matched to a BNF chapter';
+    [...items].sort((a, b) => (parseInt(ch(a)) || 99) - (parseInt(ch(b)) || 99)).forEach(it => add(ch(it), it, usesIn(it)));
+  } else {
+    items.forEach(it => add(it.med.name[0].toUpperCase(), it, usesIn(it)));
+  }
+  g.forEach((meds, k) => g.set(k, new Map([...meds].sort((a, b) => a[1].med.name.localeCompare(b[1].med.name)))));
+  if (state.groupBy === 'az') return new Map([...g].sort((a, b) => a[0].localeCompare(b[0])));
+  if (state.groupBy === 'system') return new Map([...g].sort((a, b) => M.systemOrder.indexOf(a[0]) - M.systemOrder.indexOf(b[0])));
+  return g;
+}
+function routeRowHTML(it) {
+  const lg = L(it), cur = state.dec[it.key] || {}, blocked = lg.state === 'blocked';
+  const chips = M.profiles.filter(p => state.profiles.has(p.profile_id) && it.prof[p.profile_id])
+    .map(p => `<span class="ac ${yes(p.default) ? 'core' : 'occ'}" title="${esc(p.name)}">${esc(p.short || p.name)}</span>`).join('')
+    || (state.profiles.size ? '<span class="small muted">Outside your profiles</span>' : '');
+  const offLabel = it.med.dmd_vtm && !M.dmdRoutes[it.key] ? `<span class="reason">dm+d lists no product by this route, so use is likely off-label</span>` : '';
+  const reason = (lg.reason ? `<span class="reason">${esc(lg.reason)}</span>` : (lg.state === 'unset' && lg.cd ? `<span class="reason">Controlled drug: choose a profession to check</span>` : '')) + offLabel;
+  const F = formulary(it.med, it.route), routeForm = M.form[it.med.medicine_id + '|' + it.route.route_id];
+  const decision = blocked ? `<span class="blockedtag">Not legally permitted</span>`
+    : `<select class="dec ${cur.d ? 'v-' + cur.d : ''}" data-key="${esc(it.key)}" aria-label="Decision for ${esc(it.med.name)} ${esc(it.route.name)}">${DECISIONS.map(([v, l]) => `<option value="${v}" ${cur.d === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+  const note = !blocked && NOTE_FOR[cur.d] ? `<input type="text" class="note" data-key="${esc(it.key)}" placeholder="${esc(NOTE_FOR[cur.d])}" value="${esc(cur.note || '')}" aria-label="${esc(NOTE_FOR[cur.d])}">` : '';
+  return `<div class="rr ${blocked ? 'blocked' : cur.d ? 'd-' + cur.d : ''}" data-key="${esc(it.key)}">
+    <div><span class="rp f-${esc(it.route.family)}" title="${esc(it.route.name)}" aria-label="${esc(it.route.name)}">${esc(it.route.short)}</span></div>
+    <div>${chips}${routeForm ? fBadge(F) : ''}${reason}</div>
+    <div>${decision}</div>${note}</div>`;
+}
+function codes(med) {
+  const bits = [med.bnf && `BNF ${med.bnf.split('.').map(Number).join('.').replace(/(\.0)+$/, '')}`].filter(Boolean);
+  return bits.length ? `<span class="codes" title="dm+d: ${esc(med.dmd_name)} (${esc(med.dmd_vtm)})">${esc(bits.join(' · '))}</span>` : '';
+}
+function medCardHTML(m) {
+  const F = formulary(m.med), sch = m.med.cd_schedule;
+  const multi = m.items.filter(it => L(it).state !== 'blocked').length > 1;
+  return `<article class="med" data-med="${esc(m.med.medicine_id)}">
+    <header><h3>${esc(m.med.name)}</h3>${sch ? `<span class="badge b-cd">CD Sch ${esc(sch.replace('-', ' pt '))}</span>` : ''}${fBadge(F)}${codes(m.med)}
+      ${F.f?.note ? `<span class="fnote">${esc(F.f.note)}</span>` : ''}
+      ${multi ? `<span class="medall no-print"><select class="medbulk" aria-label="Set every route of ${esc(m.med.name)}"><option value="">All routes…</option>${DECISIONS.slice(1).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></span>` : ''}</header>
+    <div class="pres">${[...m.pres].map(esc).join(' · ')}${m.med.note && sch ? ` <span class="small">(${esc(m.med.note)})</span>` : ''}</div>
+    ${m.items.map(routeRowHTML).join('')}
+  </article>`;
+}
+let lastGroups;
+function renderPicker() {
+  if (!state.profiles.size && !state.wholeMenu) { $('groups').innerHTML = '<div class="card empty">Tick one or more profiles above, or show the whole menu.</div>'; renderProgress(); return; }
+  const g = grouped(visibleItems()); lastGroups = g;
+  if (!g.size) { $('groups').innerHTML = '<div class="card empty">Nothing matches.</div>'; renderProgress(); return; }
+  $('groups').innerHTML = [...g].map(([name, meds]) => {
+    const its = [...meds.values()].flatMap(m => m.items);
+    const open = state.open.has(name) || state.q || g.size === 1;
+    return `<details class="group" data-g="${esc(name)}" ${open ? 'open' : ''}>
+      <summary><h2>${esc(name)}</h2><span class="small muted gcount">${its.filter(done).length}/${its.length} routes reviewed · ${meds.size} medicine${meds.size === 1 ? '' : 's'}</span></summary>
+      <div class="bulkbar no-print"><select class="bulk" aria-label="Set all unreviewed in ${esc(name)}"><option value="">Set all unreviewed here to…</option>${DECISIONS.slice(1).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>
+      ${[...meds.values()].map(medCardHTML).join('')}</details>`;
+  }).join('');
+  renderProgress();
+}
+function refreshMed(medId, focusKey) {
+  // a medicine can appear in several groups; redraw each copy and the group counts
+  document.querySelectorAll(`article.med[data-med="${CSS.escape(medId)}"]`).forEach(card => {
+    const gname = card.closest('details.group').dataset.g, m = lastGroups.get(gname)?.get(medId);
+    if (!m) return;
+    const tmp = document.createElement('div'); tmp.innerHTML = medCardHTML(m); card.replaceWith(tmp.firstElementChild);
+  });
+  document.querySelectorAll('details.group').forEach(d => {
+    const its = [...(lastGroups.get(d.dataset.g)?.values() || [])].flatMap(m => m.items);
+    d.querySelector('.gcount').textContent = `${its.filter(done).length}/${its.length} routes reviewed · ${lastGroups.get(d.dataset.g).size} medicine${lastGroups.get(d.dataset.g).size === 1 ? '' : 's'}`;
+  });
+  if (focusKey) document.querySelector(`details.group select.dec[data-key="${CSS.escape(focusKey)}"]`)?.focus();
+  renderProgress();
+}
+function renderProgress() {
+  const all = M.items.filter(inView);
+  const blocked = all.filter(it => L(it).state === 'blocked').length;
+  const n = all.filter(it => state.dec[it.key]?.d && L(it).state !== 'blocked').length;
+  $('progress').textContent = `${n} of ${all.length - blocked} routes reviewed` + (blocked ? ` · ${blocked} not legally permitted` : '');
+  const scoped = Object.values(state.dec).filter(v => IN_SCOPE.has(v?.d)).length, left = all.length - blocked - n;
+  $('tabCount').textContent = scoped ? scoped : '';
+  $('nextNote').textContent = (scoped ? `${scoped} route${scoped === 1 ? '' : 's'} in scope so far. ` : 'Nothing in scope yet. ')
+    + (left ? `${left} still to review: anything you leave is not in your scope.` : 'Everything here has been reviewed.')
+    + ' Check answers "Can I prescribe…?"; Document prints it, or gives you a link for your phone.';
+  persist();
+  $('pbar').style.width = (all.length - blocked ? Math.round(100 * n / (all.length - blocked)) : 0) + '%';
+  const p = profObj(), profs = M.profiles.filter(x => state.profiles.has(x.profile_id)).map(x => x.short || x.name);
+  $('sumChips').innerHTML = [p ? p.name.replace(' independent prescriber', ' IP') : 'No profession chosen', (profs.join(', ') || 'No profiles') + (state.wholeMenu ? ' + whole menu' : ''), `${n}/${all.length - blocked} reviewed`]
+    .map(x => `<span class="s">${esc(x)}</span>`).join('');
+}
+
+// ---------- scope document ----------
+const profShort = id => M.profById[id]?.short || M.profById[id]?.name || id;
+const pill = r => `<span class="rp f-${esc(r.family)}">${esc(r.short)}</span>`;
+function consolidate() {
+  // everything you decided counts, even outside your profiles; unreviewed counts only what you are working from
+  const all = M.items.filter(it => inView(it) || state.dec[it.key]?.d);
+  const by = (pred) => {
+    const m = new Map();
+    all.filter(pred).forEach(it => { if (!m.has(it.med.name)) m.set(it.med.name, []); m.get(it.med.name).push(it); });
+    return [...m].sort((a, b) => a[0].localeCompare(b[0]));
+  };
+  const d = it => state.dec[it.key]?.d, ok = it => L(it).state !== 'blocked';
+  return {
+    scope: by(it => ok(it) && IN_SCOPE.has(d(it))),
+    dev: by(it => ok(it) && d(it) === 'developmental'),
+    excl: by(it => ok(it) && d(it) === 'exclude'),
+    legal: by(it => !ok(it) && inView(it)),
+    unreviewed: all.filter(it => ok(it) && !d(it) && inView(it)).length,
+  };
+}
+// the route as its short pill, with the full name on hover and for screen readers
+const rpill = r => `<span class="rp f-${esc(r.family)}" title="${esc(r.name)}" aria-label="${esc(r.name)}">${esc(r.short)}</span>`;
+// fingerprint block of the printed document, with a link that re-opens and re-checks this exact scope
+function docFpHTML(root) {
+  return `<div class="docfp">
+    <b>Check code</b><code class="fp">${root === FP_NA ? FP_NA : checkCode(root)}</code>
+    ${root === FP_NA ? '' : `<b>Full fingerprint</b><code class="fphex">${root.match(/.{16}/g).join(' ')}</code>`}
+    <b>Check online</b><span id="docLink" class="muted">Include something to get a link</span></div>`;
+}
+// the link is made asynchronously (compression), so it is kept for the next redraw: printing redraws the document
+let docLinkReady = Promise.resolve(), docLink = { key: '', html: '' };
+function fillDocLink() {
+  const lines = scopeLines(), key = JSON.stringify([scopeCtx(), lines]);
+  if (!lines.some(l => GRANTS.includes(parseLine(l)?.code))) return Promise.resolve();
+  if (docLink.key === key) { $('docLink').innerHTML = docLink.html; return Promise.resolve(); }
+  return currentPayload().then(payload => {
+    docLink = { key, html: `<a href="${esc(scopeUrl(payload))}">Open this scope to recalculate its fingerprint</a>` };
+    if ($('docLink')) $('docLink').innerHTML = docLink.html;
+  }).catch(() => {});
+}
+function renderDoc() {
+  const p = profObj(), C = consolidate(), P = ME, T = M.trust;
+  const kv = (k, v) => `<div><b>${k}</b><span>${esc(v || '—')}</span></div>`;
+  const rows = (list, cells) => list.map(([name, its]) => its.map((it, i) =>
+    `<tr>${i === 0 ? `<td class="mname" rowspan="${its.length}">${esc(name)}</td>` : ''}${cells(it)}</tr>`).join('')).join('');
+  $('doc').innerHTML = `
+    <h1>Prescribing scope of practice</h1>
+    <div class="muted small">${esc(T.trust_name || '')}</div>
+    ${docFpHTML(scopeRoot())}${LINK && hiddenGrants().length ? `<p class="notice small">${hiddenText()}</p>` : ''}
+    <div class="kv">${kv('Name', P.name)}${kv('Role', P.role)}${kv('Prescriber', p?.name)}${kv('Registration', P.reg)}${kv('Annotation', P.annotation)}${kv('Supervisor / DPP', P.supervisor)}${kv('Date', P.date)}${kv('Review date', P.review)}
+      <div class="all"><b>Profiles</b><span>${esc(M.profiles.filter(p => state.profiles.has(p.profile_id)).map(p => p.name).join(', ') + (state.wholeMenu ? ' (plus whole menu)' : '') || '—')}</span></div></div>
+    ${p ? `<p class="small"><b>Legal basis.</b> ${esc(p.scope_note)} Controlled drugs (${esc(p.cd_regulation)}): ${esc(p.cd_note)} Unlicensed medicines ${yes(p.unlicensed) ? 'permitted' : 'not permitted'}.${sch5Text(p).replace(/<br>|<\/?b>/g, ' ')}</p>` : '<p class="notice">No professional background selected, so legal restrictions have not been applied.</p>'}
+    <h2>In scope</h2>
+    ${C.scope.length ? `<table class="scopetbl"><thead><tr><th class="mn">Medicine</th><th class="rt">Route</th><th class="sc">Scope</th><th>Restriction</th></tr></thead><tbody>
+      ${rows(C.scope, it => `<td class="rt">${rpill(it.route)}</td><td class="sc">${esc(DLABEL[state.dec[it.key].d])}</td><td>${state.dec[it.key].note ? esc(state.dec[it.key].note) : '<span class="muted">None</span>'}</td>`)}</tbody></table>` : '<p class="muted">Nothing selected yet.</p>'}
+    <h2>Developmental</h2>
+    ${C.dev.length ? `<table class="scopetbl"><thead><tr><th class="mn">Medicine</th><th class="rt">Route</th><th>Plan / evidence</th><th style="width:26%">Signed off (date, supervisor)</th></tr></thead><tbody>
+      ${rows(C.dev, it => `<td class="rt">${rpill(it.route)}</td><td>${esc(state.dec[it.key].note || '')}</td><td></td>`)}</tbody></table>` : '<p class="muted">None.</p>'}
+    <h2>Excluded by choice</h2>
+    ${C.excl.length ? `<p>${C.excl.map(([n, its]) => `${esc(n)} ${its.map(it => pill(it.route)).join(' ')}`).join(' &nbsp;·&nbsp; ')}</p>` : '<p class="muted">None.</p>'}
+    ${C.legal.length ? `<h2>Not legally permitted for this prescriber type</h2><table><thead><tr><th>Medicine</th><th>Route</th><th>Reason</th></tr></thead><tbody>
+      ${rows(C.legal, it => `<td>${rpill(it.route)}</td><td class="small">${esc(L(it).reason)}</td>`)}</tbody></table>` : ''}
+    <h2>Agreement</h2>
+    <p class="small">I will prescribe only within this scope, my competence, current legislation, and Trust policy and formulary. Doses are not part of this document.</p>
+    <div class="sign">${[['Practitioner', P.name], ['Clinical supervisor / DPP', P.supervisor], ['Non-medical prescribing lead', '']].map(([role, name]) =>
+      `<div class="signer"><div class="role">${role}</div>${[['Signature', '', 'tall'], ['Name', name, ''], ['Date', '', '']].map(([label, v, cls]) =>
+        `<div class="sfield ${cls}"><div class="sval">${esc(v)}</div><div class="slab">${label}</div></div>`).join('')}</div>`).join('')}</div>
+    <p class="small muted" style="margin-top:18px">The scope fingerprint is worked out from exactly what this scope permits: the same permissions always give the same fingerprint, and any change gives a different one. Record the full 64-character fingerprint with the signed scope; the short check code is for reading by eye. See the Fingerprints page of the builder for how it works. Data: ${esc(dataContext())}. Generated ${new Date().toLocaleDateString('en-GB')} by Prescribing Scope Builder · data built ${esc(RAW.__built || '')} · formulary: ${esc(T.formulary_source || 'not stated')}${M.dmdRelease.dmd_release ? ` · dm+d ${esc(M.dmdRelease.dmd_release)} (${esc(M.dmdRelease.release_date)})` : ''}${M.unreviewed ? ` · menu: ${M.unreviewed} of ${M.menuRows} rows not yet clinically reviewed` : ''}.</p>`;
+  docLinkReady = fillDocLink();
+}
+function scopeCSV() {
+  const C = consolidate(), q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const fp = scopeRoot();
+  const lines = [['Scope fingerprint', fp].map(q).join(','), ['Check code', fp === FP_NA ? '' : checkCode(fp)].map(q).join(','), ['Data', dataContext()].map(q).join(','), '',
+    ['section', 'medicine', 'dmd_vtm', 'route', 'scope', 'profiles', 'note'].join(',')];
+  [['In scope', C.scope], ['Developmental', C.dev], ['Excluded', C.excl], ['Not legally permitted', C.legal]].forEach(([s, list]) =>
+    list.forEach(([n, its]) => its.forEach(it => lines.push([s, n, it.med.dmd_vtm || '', it.route.name, DLABEL[state.dec[it.key]?.d] || '', inProfiles(it).map(profShort).join('; '), state.dec[it.key]?.note || L(it).reason || ''].map(q).join(',')))));
+  return lines.join('\r\n');
+}
+// ---------- scope link and fingerprint ----------
+// Specification: tools/verify_scope.py (the reference). The part between crypto:begin and crypto:end is
+// pure and has no access to the page; CI runs it against tests/vectors.json, which the reference generated.
+// crypto:begin
+const SCOPE_HEADER = 'scope-builder/1', ROOT_LEAF = 'scope-builder scope v1', GRANTS = 'ircse', NOTED = 'rd';
+const CODE = { include: 'i', restricted: 'r', continuation: 'c', specialist: 's', emergency: 'e', developmental: 'd', exclude: 'x' };
+const DECODE = Object.fromEntries(Object.entries(CODE).map(([k, v]) => [v, k]));
+const UTF8 = new TextEncoder();
+const cleanNote = t => String(t || '').normalize('NFC').replace(/[ \t\n\r\f\v ]+/g, ' ').replace(/^ +| +$/g, '');
+const normMed = m => m.startsWith('dmd:') ? 'dmd:' + m.slice(4).split('+').sort().join('+') : m;
+function itemLine(med, route, code, note) {
+  const n = NOTED.includes(code) ? cleanNote(note) : '';
+  return `${normMed(med)}|${route}=${code}${n ? ':' + n : ''}`;
+}
+function parseLine(line) {
+  const eq = line.indexOf('='); if (eq < 0) return null;
+  const key = line.slice(0, eq), rest = line.slice(eq + 1), bar = key.indexOf('|'), colon = rest.indexOf(':');
+  if (bar < 0) return null;
+  return { med: key.slice(0, bar), route: key.slice(bar + 1), code: colon < 0 ? rest : rest.slice(0, colon), note: colon < 0 ? '' : rest.slice(colon + 1) };
+}
+function cmpBytes(a, b) { for (let i = 0; i < Math.min(a.length, b.length); i++) if (a[i] !== b[i]) return a[i] - b[i]; return a.length - b.length; }
+function leafLines(lines) {
+  const grants = new Set();
+  lines.forEach(l => { const p = parseLine(l); if (p && p.code.length === 1 && GRANTS.includes(p.code)) grants.add(itemLine(p.med, p.route, p.code, p.code === 'r' ? p.note : '')); });
+  return [ROOT_LEAF, ...[...grants].map(s => [s, UTF8.encode(s)]).sort((a, b) => cmpBytes(a[1], b[1])).map(x => x[0])];
+}
+function sha256(bytes) {
+  const K = new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+  const H = new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+  const len = bytes.length, total = ((len + 9 + 63) >> 6) << 6, m = new Uint8Array(total);
+  m.set(bytes); m[len] = 0x80;
+  const dv = new DataView(m.buffer); dv.setUint32(total - 4, len * 8); dv.setUint32(total - 8, Math.floor(len / 0x20000000));
+  const W = new Uint32Array(64), rot = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let o = 0; o < total; o += 64) {
+    for (let i = 0; i < 16; i++) W[i] = dv.getUint32(o + i * 4);
+    for (let i = 16; i < 64; i++) {
+      const s0 = rot(W[i - 15], 7) ^ rot(W[i - 15], 18) ^ (W[i - 15] >>> 3), s1 = rot(W[i - 2], 17) ^ rot(W[i - 2], 19) ^ (W[i - 2] >>> 10);
+      W[i] = (W[i - 16] + s0 + W[i - 7] + s1) | 0;
+    }
+    let [a, b, c, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (h + (rot(e, 6) ^ rot(e, 11) ^ rot(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + W[i]) | 0;
+      const t2 = ((rot(a, 2) ^ rot(a, 13) ^ rot(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    H[0] += a; H[1] += b; H[2] += c; H[3] += d; H[4] += e; H[5] += f; H[6] += g; H[7] += h;
+  }
+  const out = new Uint8Array(32), odv = new DataView(out.buffer);
+  H.forEach((x, i) => odv.setUint32(i * 4, x));
+  return out;
+}
+const hex = b => [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+const cat = (...parts) => { const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0)); let o = 0; parts.forEach(p => { out.set(p, o); o += p.length; }); return out; };
+// RFC 6962 section 2.1 Merkle Tree Hash: leaf = H(0x00 || data), node = H(0x01 || left || right)
+function mth(leaves) {
+  if (!leaves.length) return sha256(new Uint8Array(0));
+  if (leaves.length === 1) return sha256(cat(new Uint8Array([0]), leaves[0]));
+  let k = 1; while (k * 2 < leaves.length) k *= 2;
+  return sha256(cat(new Uint8Array([1]), mth(leaves.slice(0, k)), mth(leaves.slice(k))));
+}
+const fingerprintHex = lines => hex(mth(leafLines(lines).map(l => UTF8.encode(l))));
+const B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford: no I, L, O, U
+function checkCode(rootHex) {
+  let bits = '';
+  for (let i = 0; i < 20; i += 2) bits += parseInt(rootHex.slice(i, i + 2), 16).toString(2).padStart(8, '0');
+  const code = bits.match(/.{5}/g).map(b => B32[parseInt(b, 2)]).join('');
+  return code.match(/.{4}/g).join('-');
+}
+const b64url = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const unb64url = str => Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+async function pipeBytes(bytes, stream) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
+async function encodePayload(ctx, lines) {
+  const raw = UTF8.encode([SCOPE_HEADER, ...Object.entries(ctx).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`), ...lines].join('\n'));
+  if (typeof CompressionStream === 'function') return 'z' + b64url(await pipeBytes(raw, new CompressionStream('deflate-raw')));
+  return 't' + b64url(raw);
+}
+async function decodePayload(payload) {
+  const bytes = unb64url(payload.slice(1));
+  const raw = payload[0] === 'z' ? await pipeBytes(bytes, new DecompressionStream('deflate-raw')) : bytes;
+  const lines = new TextDecoder().decode(raw).split('\n');
+  if (lines[0] !== SCOPE_HEADER) throw new Error('this is not a version 1 scope link');
+  const ctx = {}, items = [];
+  lines.slice(1).forEach(l => { if (/^[tpcf]=/.test(l)) ctx[l[0]] = l.slice(2); else if (l) items.push(l); });
+  return { ctx, items };
+}
+// crypto:end
+
+// Self-test on load: the in-page SHA-256 and Merkle code must reproduce known answers, or fingerprints are withheld.
+const CRYPTO = { ok: true, why: '' };
+(() => {
+  const abc = hex(sha256(UTF8.encode('abc')));
+  const rfc8 = hex(mth(['', '00', '10', '2021', '3031', '40414243', '5051525354555657', '606162636465666768696a6b6c6d6e6f']
+    .map(h => Uint8Array.from(h.match(/../g) || [], x => parseInt(x, 16)))));
+  if (abc !== 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad') { CRYPTO.ok = false; CRYPTO.why = 'SHA-256 self-test failed'; }
+  else if (rfc8 !== '5dc9da79a70659a9ad559cb701ded9a2ab9d823aad2f4960cfe370eff4604328') { CRYPTO.ok = false; CRYPTO.why = 'Merkle self-test failed'; }
+  // where the browser offers Web Crypto, cross-check against it too
+  if (CRYPTO.ok && globalThis.crypto?.subtle) {
+    const sample = UTF8.encode('scope-builder self-test ' + RAW.__built);
+    crypto.subtle.digest('SHA-256', sample).then(d => {
+      if (hex(new Uint8Array(d)) !== hex(sha256(sample))) { CRYPTO.ok = false; CRYPTO.why = 'SHA-256 disagrees with the browser'; cryptoBanner(); }
+    }).catch(() => {});
+  }
+})();
+function cryptoBanner() { if (!CRYPTO.ok) $('strip').insertAdjacentHTML('afterbegin', `<span class="warnmark">Fingerprints unavailable: ${esc(CRYPTO.why)}. Do not rely on fingerprints from this browser.</span>`); }
+const FP_NA = 'unavailable';
+
+// medicine identity in links and fingerprints: dm+d VTM code(s) where known, otherwise a frozen local id
+const medKey = med => med.dmd_vtm ? 'dmd:' + med.dmd_vtm.split(' ').sort().join('+') : 'local:' + med.medicine_id;
+function decisionLines(dec) {
+  return Object.entries(dec).filter(([k, v]) => v?.d && CODE[v.d] && M.itemByKey.has(k))
+    .map(([k, v]) => { const it = M.itemByKey.get(k); return itemLine(medKey(it.med), it.route.route_id, CODE[v.d], v.note); }).sort();
+}
+// link lines back to menu items, following dm+d's previous codes so links made before a re-coding still resolve
+function resolveLines(lines) {
+  const byCode = {};
+  Object.values(M.meds).forEach(m => {
+    if (!m.dmd_vtm) { byCode['local:' + m.medicine_id] = m; return; }
+    [...m.dmd_vtm.split(' '), ...(m.dmd_vtm_prev || '').split(' ').filter(Boolean)].forEach(c => byCode[c] = m);
+  });
+  const dec = {}, unresolved = [];
+  lines.forEach(l => {
+    const p = parseLine(l), d = p && DECODE[p.code];
+    if (!d) { unresolved.push(l); return; }
+    const meds = p.med.startsWith('dmd:') ? [...new Set(p.med.slice(4).split('+').map(c => byCode[c]))] : [byCode[p.med]];
+    const key = meds.length === 1 && meds[0] ? meds[0].medicine_id + '|' + p.route : null;
+    if (key && M.itemByKey.has(key)) dec[key] = { d, note: p.note }; else unresolved.push(l);
+  });
+  return { dec, unresolved };
+}
+const dataContext = () => [M.dmdRelease.dmd_release && `dm+d ${M.dmdRelease.dmd_release.replace('Release ', '')}`, `built ${RAW.__built}`, RAW.__commit && `commit ${RAW.__commit}`].filter(Boolean).join('; ');
+const fpOf = lines => CRYPTO.ok ? fingerprintHex(lines) : FP_NA;
+const fingerprint = dec => fpOf(decisionLines(dec));
+const scopeUrl = payload => location.href.split('#')[0] + '#s=' + payload;
+function fpHTML(root) {
+  if (root === FP_NA) return `<code class="fp">${FP_NA}</code>`;
+  return `<code class="fp" title="Check code: the first 80 bits, for reading by eye">${checkCode(root)}</code><code class="fphex">${root.match(/.{16}/g).join(' ')}</code>`;
+}
+function workingHTML(lines) {
+  const leaves = leafLines(lines);
+  return `<details class="working"><summary>Show how this fingerprint is calculated</summary>
+    <p class="small">SHA-256 Merkle Tree Hash (RFC 6962) over these ${leaves.length} leaves, in this order. The 16-character code is the first 80 bits, for reading by eye: record the full 64-digit fingerprint.</p>
+    <ol start="0" class="leaves">${leaves.map(l => `<li><code>${esc(l)}</code></li>`).join('')}</ol>
+    <p class="small"><a href="fingerprint.html">How fingerprints work, in plain English, with a playground →</a></p></details>`;
+}
+
+// ---------- the open scope ----------
+// fingerprint, lines and link context of whichever scope is showing. A shared scope keeps its own lines,
+// so its fingerprint is exactly the link's, including entries this menu can't show.
+const scopeLines = () => LINK ? LINK.items : decisionLines(state.dec);
+const scopeRoot = () => fpOf(scopeLines());
+const profContext = st => [...[...st.profiles].filter(p => M.profById[p]).sort(), ...(st.wholeMenu ? ['*'] : [])].join(',');
+const scopeCtx = () => ({ t: LINK ? LINK.ctx.t || '' : RAW.__trust, p: state.prof, c: LINK ? LINK.ctx.c || '' : dataContext(), f: profContext(state) });
+let payloadCache = { key: '', payload: '' };
+async function currentPayload() {
+  const ctx = scopeCtx(), lines = scopeLines(), key = JSON.stringify([ctx, lines]);
+  if (payloadCache.key !== key) payloadCache = { key, payload: await encodePayload(ctx, lines) };
+  return payloadCache.payload;
+}
+const hiddenGrants = () => (LINK ? LINK.unresolved : []).map(parseLine).filter(p => p && p.code.length === 1 && GRANTS.includes(p.code));
+function hiddenText() {
+  const hidden = hiddenGrants(), n = hidden.length;
+  const what = hidden.map(p => `${esc(p.med.replace(/^dmd:/, 'dm+d code ').replace(/^local:/, ''))} by ${esc(M.routes[p.route]?.name || p.route)} (${{ i: 'included', r: 'with a restriction', c: 'continuation only', s: 'specialist advice only', e: 'emergency use only' }[p.code]})`).join('; ');
+  return `This scope permits ${n === 1 ? 'a medicine' : `${n} medicines`} that ${n === 1 ? 'isn\'t' : 'aren\'t'} on ${esc(M.trust.trust_short || 'this Trust')}'s menu, so ${n === 1 ? 'it can\'t' : 'they can\'t'} be shown: ${what}. It may have been taken off the menu since the scope was signed, or the scope was made for another Trust. ${n === 1 ? 'It is' : 'They are'} still part of the fingerprint.`;
+}
+
+// ---------- Check: "Can I prescribe...?" ----------
+let V = null; // the open scope, as Check reads it: { ctx, items, dec }
+const VERDICT = {
+  blocked: ['b-no', 'Not legally permitted'], include: ['b-ok', 'In your scope'], restricted: ['b-ok', 'In scope, with restriction'],
+  continuation: ['b-ok', 'In scope: continuation only'], specialist: ['b-ok', 'In scope: on specialist advice only'],
+  emergency: ['b-ok', 'In scope: emergency use only'], developmental: ['b-dev', 'Developmental: not yet in scope'],
+  exclude: ['b-mute', 'Excluded'], none: ['b-mute', 'Not in your scope'],
+};
+function verdict(it) {
+  const lg = legal(profObj(), it.med, it.route), d = V.dec[it.key]?.d;
+  return { key: lg.state === 'blocked' ? 'blocked' : d || 'none', lg, d, note: V.dec[it.key]?.note };
+}
+function renderView() {
+  V = { ctx: scopeCtx(), items: scopeLines(), dec: state.dec };
+  $('vProf').innerHTML = '<option value="">Choose to check the legal rules…</option>' + M.professions.map(p => `<option value="${esc(p.profession_id)}">${esc(p.name)}</option>`).join('');
+  $('vProf').value = state.prof || '';
+  $('vTrust').textContent = M.trust.trust_name || '';
+  const root = fpOf(V.items);
+  $('vFp').innerHTML = fpHTML(root);
+  $('vCode').innerHTML = root === FP_NA ? `<code class="fp">${FP_NA}</code>` : `<code class="fp">${checkCode(root)}</code>`;
+  $('vWorking').innerHTML = CRYPTO.ok ? workingHTML(V.items) : '';
+  $('vContext').textContent = LINK && LINK.ctx.c ? `Made with: ${LINK.ctx.c}` : '';
+  const vals = Object.values(V.dec), inScope = vals.filter(v => IN_SCOPE.has(v.d)).length, dev = vals.filter(v => v.d === 'developmental').length;
+  $('vCounts').innerHTML = `<span class="s"><b>${inScope}</b> routes in scope</span>${dev ? `<span class="s"><b>${dev}</b> developmental</span>` : ''}`;
+  const warn = [];
+  if (!CRYPTO.ok) warn.push(`The fingerprint can't be shown: ${esc(CRYPTO.why)}.`);
+  if (LINK && LINK.ctx.t && LINK.ctx.t !== RAW.__trust) warn.push(`This scope was made in another Trust's builder (${esc(LINK.ctx.t)}). The fingerprint is still valid; formulary statuses shown here are this Trust's.`);
+  if (hiddenGrants().length) warn.push(hiddenText());
+  if (state.prof) {
+    const blocked = M.items.filter(it => IN_SCOPE.has(V.dec[it.key]?.d) && verdict(it).key === 'blocked');
+    if (blocked.length) warn.push(`${blocked.length} route(s) in this scope are not legally permitted for your profession, so they don't apply to you.`);
+  } else warn.push('Choose your professional background to apply the legal rules.');
+  const drift = M.items.filter(it => IN_SCOPE.has(V.dec[it.key]?.d) && ['R', 'N'].includes((M.form[it.med.medicine_id + '|*']?.status || '').toUpperCase()));
+  if (drift.length) warn.push(`${drift.length} route(s) in scope are restricted or not on the current formulary: check before prescribing.`);
+  $('vWarn').innerHTML = warn.map(w => `<p class="notice small">${w}</p>`).join('');
+  renderViewResults();
+}
+function renderViewResults() {
+  const q = $('vq').value.trim().toLowerCase();
+  const terms = q.split(/\s+/).filter(Boolean);
+  const its = M.items.filter(it => {
+    if (!terms.length) return IN_SCOPE.has(V.dec[it.key]?.d) || V.dec[it.key]?.d === 'developmental';
+    const hay = `${it.med.name} ${it.route.short} ${it.route.name} ${it.uses.map(u => u.presentation).join(' ')}`.toLowerCase();
+    return terms.every(t => hay.includes(t));
+  });
+  const byMed = new Map();
+  its.forEach(it => { if (!byMed.has(it.med.name)) byMed.set(it.med.name, []); byMed.get(it.med.name).push(it); });
+  const cards = [...byMed].sort((a, b) => a[0].localeCompare(b[0])).slice(0, 80).map(([name, list]) => {
+    const F = formulary(list[0].med);
+    return `<article class="med"><header><h3>${esc(name)}</h3>${fBadge(F)}</header>${list.map(it => {
+      const v = verdict(it), [cls, label] = VERDICT[v.key];
+      const why = v.key === 'blocked' ? v.lg.reason : v.note;
+      return `<div class="vr v-${v.key}"><span class="rp f-${esc(it.route.family)}" title="${esc(it.route.name)}">${esc(it.route.short)}</span><span class="badge ${cls}">${label}</span>${why ? `<span class="reason">${esc(why)}</span>` : ''}</div>`;
+    }).join('')}</article>`;
+  });
+  const empty = terms.length ? 'Not on the menu. If it isn\'t on the menu, it isn\'t in your scope.'
+    : LINK ? 'This scope has nothing in it.' : 'Nothing in your scope yet. <a href="#build">Build it first →</a>';
+  $('vResults').innerHTML = cards.length ? cards.join('') + (byMed.size > 80 ? `<p class="muted small">Showing 80 of ${byMed.size} medicines: search to narrow.</p>` : '')
+    : `<div class="card empty">${empty}</div>`;
+}
+
+// ---------- saved on this device ----------
+// The draft and your details are kept in this browser as you go, so a refresh or a visit to another page
+// loses nothing. A scope you choose to keep opens from the home screen. Nothing is sent anywhere.
+const store = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del: k => { try { localStorage.removeItem(k); } catch {} },
+};
+const DRAFT_KEY = 'scope-builder/draft/' + RAW.__trust, ME_KEY = 'scope-builder/me', LINK_KEY = 'scope-builder/open-link/' + RAW.__trust;
+const KEEP = 'scope-builder/kept/' + RAW.__trust;
+const kept = () => { try { return localStorage.getItem(KEEP) || ''; } catch { return ''; } };
+const session = {
+  get: () => { try { return sessionStorage.getItem(LINK_KEY) || ''; } catch { return ''; } },
+  set: v => { try { v ? sessionStorage.setItem(LINK_KEY, v) : sessionStorage.removeItem(LINK_KEY); } catch {} },
+};
+let saveTimer = 0;
+const saveDraftNow = () => { clearTimeout(saveTimer); saveTimer = 0; store.set(DRAFT_KEY, { v: 1, saved: new Date().toISOString(), prof: DRAFT.prof, profiles: [...DRAFT.profiles], wholeMenu: DRAFT.wholeMenu, groupBy: DRAFT.groupBy, dec: DRAFT.dec }); };
+function persist() { if (state !== DRAFT) return; clearTimeout(saveTimer); saveTimer = setTimeout(saveDraftNow, 300); }
+function loadDraft() {
+  const d = store.get(DRAFT_KEY);
+  if (!d) { M.profiles.filter(p => yes(p.default)).forEach(p => DRAFT.profiles.add(p.profile_id)); return false; }
+  Object.assign(DRAFT, { prof: d.prof || '', profiles: new Set((d.profiles || []).filter(p => M.profById[p])), wholeMenu: !!d.wholeMenu, groupBy: d.groupBy || 'system', dec: d.dec || {} });
+  return true;
+}
+const draftCount = () => Object.values(DRAFT.dec).filter(v => v?.d).length;
+const installed = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+async function renderKeep() {
+  const box = $('vKeep');
+  if (!scopeLines().some(l => GRANTS.includes(parseLine(l)?.code))) { box.hidden = true; return; }
+  const payload = await currentPayload(), here = kept() === payload;
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const how = installed() ? '' : ios ? ' To open it like an app, tap Share, then <b>Add to Home Screen</b>.' : ' To open it like an app, use your browser menu: <b>Install</b> or <b>Add to Home screen</b>.';
+  box.hidden = false;
+  box.innerHTML = here
+    ? `<p class="small"><b>Kept on this device.</b> ${installed() ? 'Opening this app from your home screen goes straight to it.' : 'Opened from your home screen, this builder goes straight to it; in the browser, there is a link at the top of the page.'}${how}</p>
+       <button class="btn" type="button" id="vForget">Remove from this device</button>`
+    : `<p class="small"><b>Carry it on your phone.</b> Keep this scope on this device so it's always to hand in Check, even offline. It is stored only in this browser; nothing is sent anywhere.${how}</p>
+       <button class="btn" type="button" id="vKeepBtn">Keep on this device</button>`;
+  ($('vKeepBtn') || $('vForget')).onclick = () => {
+    try { here ? localStorage.removeItem(KEEP) : localStorage.setItem(KEEP, payload); } catch { alert('This browser won\'t store it (private browsing?). Bookmark the scope link instead.'); }
+    renderKeep(); renderSetup();
+  };
+}
+
+// ---------- modes and the shared scope ----------
+const MODES = ['build', 'check', 'document'];
+function setMode(m, scroll = true) {
+  MODE = MODES.includes(m) ? m : 'build';
+  document.querySelectorAll('.modes a').forEach(a => a.dataset.mode === MODE ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+  $('buildMode').hidden = MODE !== 'build' || !!LINK;
+  $('linkBuild').hidden = MODE !== 'build' || !LINK;
+  $('checkMode').hidden = MODE !== 'check';
+  $('docMode').hidden = MODE !== 'document';
+  if (location.hash !== '#' + MODE) history.replaceState(null, '', '#' + MODE);
+  if (MODE === 'check') renderView();
+  if (MODE === 'document') { renderDoc(); renderKeep(); $('shareBox').hidden = true; }
+  if (MODE === 'build' && LINK) renderLinkBuild();
+  if (scroll) window.scrollTo(0, 0);
+}
+function renderLinkBar() {
+  $('linkBar').hidden = !LINK;
+  if (!LINK) return;
+  const from = LINK.ctx.t && LINK.ctx.t !== RAW.__trust ? ` from another Trust's builder (${esc(LINK.ctx.t)})` : '';
+  $('linkBar').innerHTML = `<div><b>You're looking at a shared scope</b>${from}. Your own draft is safe and unchanged.</div>
+    <div class="linkbtns"><button class="btn" type="button" data-act="copy">Edit a copy</button><button class="btn" type="button" data-act="leave">Back to my draft</button></div>`;
+}
+function renderLinkBuild() {
+  const n = draftCount();
+  $('linkBuild').innerHTML = `<h2>Build edits your own draft</h2>
+    <p>The scope you're looking at was shared with you, so it can't be changed here. Edit a copy to make it your draft${n ? `: this replaces your current draft (${n} decision${n === 1 ? '' : 's'})` : ''}, or go back to your draft.</p>
+    <div class="linkbtns"><button class="btn primary" type="button" data-act="copy">Edit a copy</button><button class="btn" type="button" data-act="leave">Back to my draft</button></div>`;
+}
+async function openLink(payload, mode = 'check') {
+  let ctx, items;
+  try { ({ ctx, items } = await decodePayload(payload)); }
+  catch (err) { alert('This scope link could not be read: ' + err.message); session.set(''); setMode(MODE); return; }
+  const { dec, unresolved } = resolveLines(items), f = (ctx.f || '').split(',').filter(Boolean);
+  const st = Object.assign(newState(), { prof: ctx.p || '', dec, profiles: new Set(f.filter(p => M.profById[p])), wholeMenu: !ctx.f || f.includes('*') });
+  saveDraftNow();
+  LINK = { payload, ctx, items, unresolved, state: st }; state = st; session.set(payload);
+  renderSetup(); renderPicker(); renderLinkBar(); setMode(mode);
+}
+function leaveLink(mode = MODE) {
+  LINK = null; state = DRAFT; session.set('');
+  renderSetup(); renderPicker(); renderLinkBar(); setMode(mode);
+}
+function editCopy() {
+  const n = draftCount();
+  if (n && !confirm(`Replace your draft (${n} decision${n === 1 ? '' : 's'}) with a copy of this shared scope?`)) return;
+  const src = LINK.state;
+  DRAFT = Object.assign(newState(), { prof: src.prof, profiles: new Set(src.profiles), wholeMenu: src.wholeMenu, dec: JSON.parse(JSON.stringify(src.dec)) });
+  LINK = null; state = DRAFT; session.set(''); saveDraftNow();
+  $('setup').open = false;
+  renderSetup(); renderPicker(); renderLinkBar(); setMode('build');
+}
+
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const fileStem = () => 'scope-' + ((ME.name || 'practitioner').toLowerCase().replace(/[^a-z0-9]+/g, '-')) + '-' + new Date().toISOString().slice(0, 10);
+
+// ---------- events ----------
+function bulkSet(items, v) { items.forEach(it => { if (!state.dec[it.key]?.d && L(it).state !== 'blocked') setDecision(it.key, v); }); }
+function wire() {
+  window.addEventListener('hashchange', () => {
+    const h = location.hash.slice(1);
+    if (h.startsWith('s=')) openLink(h.slice(2)); else if (MODES.includes(h)) setMode(h);
+  });
+  document.addEventListener('click', e => {
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act === 'copy') editCopy();
+    if (act === 'leave') leaveLink();
+    if (!e.target.closest('#more')) $('more').open = false;
+  });
+  $('prof').onchange = e => { state.prof = e.target.value; renderLegalBox(); renderPicker(); };
+  $('profBox').onclick = e => {
+    const b = e.target.closest('.pchip'); if (!b) return;
+    const id = b.dataset.p, on = !state.profiles.has(id);
+    on ? state.profiles.add(id) : state.profiles.delete(id);
+    b.setAttribute('aria-pressed', on); renderPicker();
+  };
+  $('setup').ontoggle = () => { $('setupChev').textContent = $('setup').open ? 'Hide' : 'Change'; };
+  $('setupDone').onclick = () => { $('setup').open = false; $('setup').scrollIntoView({ block: 'start', behavior: 'smooth' }); };
+  $('wholeMenu').onchange = e => { state.wholeMenu = e.target.checked; renderPicker(); };
+  $('personBox').oninput = e => { ME[e.target.dataset.k] = e.target.value; store.set(ME_KEY, ME); renderDoc(); };
+  $('forgetMe').onclick = () => { if (!confirm('Clear your details from this device?')) return; ME = {}; store.del(ME_KEY); renderSetup(); renderDoc(); };
+  $('q').oninput = e => { state.q = e.target.value.trim(); renderPicker(); };
+  $('groupBy').onchange = e => { state.groupBy = e.target.value; state.open.clear(); renderPicker(); };
+  $('show').onchange = e => { state.show = e.target.value; renderPicker(); };
+  $('coreOnly').onchange = e => { state.coreOnly = e.target.checked; renderPicker(); };
+  $('coreInclude').onclick = () => {
+    const todo = M.items.filter(it => isCore(it) && !state.dec[it.key]?.d && L(it).state !== 'blocked');
+    if (!todo.length) { alert('No unreviewed Core routes.'); return; }
+    if (!confirm(`Set ${todo.length} unreviewed Core route(s) to "Include"? You can change any of them afterwards.`)) return;
+    bulkSet(todo, 'include'); renderPicker();
+  };
+  $('expandAll').onclick = () => {
+    const ds = [...document.querySelectorAll('details.group')], open = !ds.every(d => d.open);
+    ds.forEach(d => { d.open = open; open ? state.open.add(d.dataset.g) : state.open.delete(d.dataset.g); });
+  };
+  $('groups').addEventListener('toggle', e => { const d = e.target; if (d.classList?.contains('group')) d.open ? state.open.add(d.dataset.g) : state.open.delete(d.dataset.g); }, true);
+  $('groups').addEventListener('change', e => {
+    const t = e.target;
+    if (t.classList.contains('bulk')) {
+      if (!t.value) return;
+      bulkSet([...lastGroups.get(t.closest('details').dataset.g).values()].flatMap(m => m.items), t.value);
+      renderPicker(); return;
+    }
+    if (t.classList.contains('medbulk')) {
+      if (!t.value) return;
+      const card = t.closest('article.med'), m = lastGroups.get(card.closest('details').dataset.g).get(card.dataset.med);
+      m.items.forEach(it => { if (L(it).state !== 'blocked') setDecision(it.key, t.value); });
+      refreshMed(card.dataset.med); return;
+    }
+    if (t.classList.contains('dec')) {
+      setDecision(t.dataset.key, t.value);
+      refreshMed(M.itemByKey.get(t.dataset.key).med.medicine_id, t.dataset.key);
+    }
+  });
+  $('groups').addEventListener('input', e => {
+    if (!e.target.classList.contains('note')) return;
+    const k = e.target.dataset.key; if (state.dec[k]) state.dec[k].note = e.target.value;
+    document.querySelectorAll(`input.note[data-key="${CSS.escape(k)}"]`).forEach(x => { if (x !== e.target) x.value = e.target.value; });
+    persist();
+  });
+  $('save').onclick = () => {
+    $('more').open = false;
+    download(fileStem() + '.json', JSON.stringify({ app: 'scope-builder', kind: 'decisions', saved: new Date().toISOString(),
+      trust: M.trust.trust_name, prof: state.prof, profiles: [...state.profiles], wholeMenu: state.wholeMenu, person: ME, decisions: state.dec }, null, 2), 'application/json');
+  };
+  $('saveProfile').onclick = () => {
+    const keys = M.items.filter(it => IN_SCOPE.has(state.dec[it.key]?.d)).map(it => it.key);
+    if (!keys.length) { alert('Include some medicines first: a profile is the set of routes you have included.'); return; }
+    const name = prompt('Profile name, e.g. "ED Resus" or "Frailty SDEC"'); if (!name) return;
+    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const lines = ['medicine_id,route', ...keys.map(k => k.replace('|', ','))];
+    download(`${id}.csv`, lines.join('\r\n') + '\r\n', 'text/csv');
+    alert(`Saved ${keys.length} routes as profile "${name}": the routes you included. No profession or personal details are saved.\n\nTo share it, put ${id}.csv in data/trusts/<trust>/profiles/ and add this row to profiles.csv:\n${id},${name},${name},<group>,<description>,,Saved from the page ${new Date().toISOString().slice(0, 10)},`);
+  };
+  $('load').onchange = async e => {
+    $('more').open = false;
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const s = JSON.parse(await f.text());
+      if (s.app !== 'scope-builder') throw new Error('not a Scope Builder file');
+      const n = draftCount();
+      if (n && !confirm(`Replace your draft (${n} decision${n === 1 ? '' : 's'}) with the scope in ${f.name}?`)) { e.target.value = ''; return; }
+      const dec = s.decisions || {};
+      DRAFT = Object.assign(newState(), { prof: s.prof || '', profiles: new Set((s.profiles || []).filter(p => M.profById[p])), wholeMenu: !!s.wholeMenu, dec });
+      if (s.person && Object.values(s.person).some(Boolean)) { ME = s.person; store.set(ME_KEY, ME); }
+      LINK = null; state = DRAFT; session.set(''); saveDraftNow();
+      renderSetup(); renderPicker(); renderLinkBar(); setMode('build');
+      const lost = Object.keys(dec).filter(k => !M.itemByKey.has(k));
+      if (lost.length) alert(`${lost.length} saved decision(s) refer to medicines or routes no longer on the menu. They are kept in the file but not shown.`);
+    } catch (err) { alert('Could not load that file: ' + err.message); }
+    e.target.value = '';
+  };
+  $('startOver').onclick = () => {
+    $('more').open = false;
+    if (!confirm('Start a new scope? This discards your draft on this device. Your details and any kept scope stay.')) return;
+    DRAFT = newState(); M.profiles.filter(p => yes(p.default)).forEach(p => DRAFT.profiles.add(p.profile_id));
+    LINK = null; state = DRAFT; session.set(''); store.del(DRAFT_KEY);
+    $('setup').open = true;
+    renderSetup(); renderPicker(); renderLinkBar(); setMode('build');
+  };
+  $('clear').onclick = () => { if (confirm('Clear every decision?')) { state.dec = {}; renderPicker(); } };
+  $('print').onclick = async () => { renderDoc(); await docLinkReady; window.print(); };
+  $('share').onclick = async () => {
+    const lines = scopeLines(), inScope = lines.filter(l => GRANTS.includes(parseLine(l)?.code)).length;
+    if (!inScope) { alert('Include something first: the link and fingerprint describe what is in scope.'); return; }
+    const url = scopeUrl(await currentPayload());
+    $('shareUrl').value = url; $('shareFp').innerHTML = fpHTML(fpOf(lines));
+    $('shareWorking').innerHTML = CRYPTO.ok ? workingHTML(lines) : '';
+    $('shareNote').textContent = `${inScope} routes in scope. The link holds the decisions, your profession and profiles, the Trust and the data versions, but not your name or details. Anyone with the same permissions gets the same fingerprint. ${url.length.toLocaleString()} characters.`;
+    $('shareBox').hidden = false;
+  };
+  $('copyUrl').onclick = async () => {
+    try { await navigator.clipboard.writeText($('shareUrl').value); $('copyUrl').textContent = 'Copied'; }
+    catch { $('shareUrl').select(); document.execCommand('copy'); $('copyUrl').textContent = 'Copied'; }
+    setTimeout(() => $('copyUrl').textContent = 'Copy link', 1500);
+  };
+  $('vProf').onchange = e => { state.prof = e.target.value; renderSetup(); renderPicker(); renderView(); };
+  $('vq').oninput = () => renderViewResults();
+  $('csv').onclick = () => download(fileStem() + '.csv', '﻿' + scopeCSV(), 'text/csv');
+  $('dataFiles').onchange = async e => {
+    const known = ['menu.csv', 'profiles.csv', 'formulary.csv', 'trust.csv', 'medicines.csv'], skipped = [];
+    for (const f of e.target.files) {
+      const n = f.name.toLowerCase(), text = await f.text();
+      if (known.includes(n)) { RAW[n] = text; continue; }
+      if (/^﻿?medicine_id,route\b/.test(text)) { // a profile file: add it as an extra profile, ticked
+        const id = 'upload-' + n.replace(/\.csv$/, '').replace(/[^a-z0-9]+/g, '-');
+        RAW.__profiles[id] = text;
+        (RAW.__extraProfiles ||= {})[id] = { profile_id: id, name: f.name.replace(/\.csv$/i, ''), short: f.name.replace(/\.csv$/i, '').slice(0, 12), group: 'Uploaded', description: 'Uploaded in this browser', default: '' };
+        state.profiles.add(id); continue;
+      }
+      skipped.push(f.name);
+    }
+    M = buildModel(); if (skipped.length) M.warn.unshift('Ignored (unrecognised file): ' + skipped.join(', '));
+    state.profiles = new Set([...state.profiles].filter(p => M.profById[p]));
+    renderSetup(); renderPicker();
+  };
+  window.addEventListener('beforeprint', renderDoc);
+  window.addEventListener('pagehide', () => { if (saveTimer) saveDraftNow(); });
+}
+
+// ---------- go ----------
+M = buildModel();
+const hadDraft = loadDraft();
+ME = store.get(ME_KEY) || {};
+if (hadDraft && (DRAFT.prof || draftCount())) $('setup').open = false;
+renderSetup(); wire(); renderPicker(); cryptoBanner();
+{
+  // a link in the address wins; then a shared scope open in this tab before a refresh; then, from the home screen, the kept scope
+  const h = location.hash.slice(1), link = h.startsWith('s=') ? h.slice(2) : session.get() || (installed() && !MODES.includes(h) ? kept() : '');
+  if (link) openLink(link, MODES.includes(h) ? h : 'check');
+  else setMode(MODES.includes(h) ? h : 'build', false);
+}
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(() => {});
+})();
+</script>
+</body>
+</html>

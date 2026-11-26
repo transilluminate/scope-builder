@@ -1,0 +1,6 @@
+# Shared data: changes here affect every Trust, so a maintainer reviews them.
+/data/legal/        @transilluminate
+/data/medicines.csv @transilluminate
+/data/dmd/          @transilluminate
+/build.py           @transilluminate
+/src/               @transilluminate

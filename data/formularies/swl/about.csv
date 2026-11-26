@@ -1,0 +1,11 @@
+key,value
+name,SWL formulary
+short,SWL
+full_name,South West London Joint Medicines Formulary
+region,London (South West)
+system,netFormulary
+url,https://www.swljointmedicinesformulary.nhs.uk/
+source,A-Z of formulary items and A-Z of non-formulary items reports
+imported,2026-11-26
+licence,Not established: a publicly available website with no licence information found
+permission,Not yet requested: modest use of a public website (see LICENSES.md)

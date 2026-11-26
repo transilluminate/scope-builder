@@ -1,0 +1,29 @@
+kind,id,note
+route,PO,
+route,NG,
+route,SL,
+route,buccal,
+route,intranasal,
+route,IV,
+route,IO,
+route,IM,
+route,SC,
+route,infiltration,
+route,regional,
+route,inhaled,
+route,nebulised,
+route,topical,
+route,nasal_topical,
+route,eye,
+route,PR,
+route,transdermal,
+local_medicine,alginate_preparation,no dm+d VTM
+local_medicine,crystalloid_fluids,no dm+d VTM
+local_medicine,ear_drops_antimicrobial_steroid,no dm+d VTM
+local_medicine,hiv_post_exposure_prophylaxis,no dm+d VTM
+local_medicine,laxatives,no dm+d VTM
+local_medicine,oral_rehydration_salts,no dm+d VTM
+local_medicine,oxygen,no dm+d VTM
+local_medicine,pabrinex,no dm+d VTM
+local_medicine,phosphate_replacement,no dm+d VTM
+local_medicine,prothrombin_complex_concentrate,no dm+d VTM

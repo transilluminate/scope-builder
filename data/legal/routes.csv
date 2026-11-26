@@ -1,0 +1,19 @@
+route_id,name,short,family,legal_class,dmd_routes
+PO,Oral,PO,oral,oral,26643006
+NG,Nasogastric tube,NG,oral,enteral_tube,372454008
+SL,Sublingual,SL,mucosal,sublingual,37839007
+buccal,Buccal / oromucosal,Buccal,mucosal,oromucosal,54471007 372473007
+intranasal,Intranasal,IN,mucosal,intranasal,46713006
+IV,Intravenous,IV,injection,injection,47625008
+IO,Intraosseous,IO,injection,injection,417255000
+IM,Intramuscular,IM,injection,injection,78421000
+SC,Subcutaneous,SC,injection,injection,34206005
+infiltration,Local infiltration,Infiltration,injection,injection,718329006 372464004
+regional,Regional nerve block,Nerve block,injection,injection,372475000
+inhaled,Inhaled,Inhaled,inhaled,inhaled,18679011000001101
+nebulised,Nebulised,Neb,inhaled,inhaled,18679011000001101
+topical,Topical,Topical,topical,topical,448598008 10547007
+nasal_topical,Topical (nasal),Nasal,topical,topical,46713006
+eye,Eye,Eye,topical,topical,372472002
+PR,Rectal,PR,rectal,rectal,37161004
+transdermal,Transdermal,Patch,topical,transdermal,45890007

@@ -1,0 +1,117 @@
+name: Refresh dm+d
+
+# Once a month, download the latest dm+d release from NHS TRUD, re-import it, and propose the
+# changes as a pull request for a person to review. If the build fails (for example because dm+d
+# now gives a medicine a different controlled-drug schedule), it opens an issue instead, so a
+# schedule change can never sit unnoticed.
+#
+# Needs the repository secret TRUD_API_KEY (see README, "dm+d codes"). Run it by hand from the
+# Actions tab with "Run workflow".
+
+on:
+  schedule:
+    - cron: '17 6 3 * *' # 06:17 UTC on the 3rd of each month
+  workflow_dispatch:
+
+permissions:
+  contents: write # push the refresh branch
+  pull-requests: write
+  issues: write
+
+concurrency: refresh-dmd
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      # actions are pinned to exact commits, not movable tags; the comment gives the release
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Download the latest dm+d from TRUD
+        env:
+          TRUD_API_KEY: ${{ secrets.TRUD_API_KEY }}
+        run: |
+          if [ -z "$TRUD_API_KEY" ]; then
+            echo "::error::The TRUD_API_KEY repository secret is not set. See README, \"dm+d codes\"."
+            exit 1
+          fi
+          python3 tools/fetch_dmd.py
+
+      - name: Import it
+        run: python3 tools/import_dmd.py
+
+      - name: Summarise the changes
+        id: changes
+        run: |
+          if git diff --quiet -- data/; then
+            echo "Already up to date: nothing changed." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "any=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "any=true" >> "$GITHUB_OUTPUT"
+          python3 tools/dmd_changes.py summary.md || true
+          echo "release=$(grep '^dmd_release,' data/dmd/dmd_release.csv | cut -d, -f2 | sed 's/^Release //')" >> "$GITHUB_OUTPUT"
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build and run the checks
+        id: build
+        if: steps.changes.outputs.any == 'true'
+        run: |
+          set +e
+          { python3 build.py && python3 tools/verify_scope.py --self-test && node tests/check_crypto.js; } > build.log 2>&1
+          status=$?
+          cat build.log
+          if [ $status -eq 0 ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "ok=false" >> "$GITHUB_OUTPUT"; fi
+
+      # A pull request opened with the workflow's own token does not start the normal checks,
+      # so the results of the step above go into its description instead.
+      - name: Propose the refresh
+        if: steps.changes.outputs.any == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE: ${{ steps.changes.outputs.release }}
+          OK: ${{ steps.build.outputs.ok }}
+        run: |
+          branch="dmd/$RELEASE"
+          if git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
+            echo "Branch $branch already exists: this release has already been proposed." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$branch"
+          git add data/
+          git commit -q -m "Refresh dm+d to release $RELEASE"
+          git push -q origin "$branch"
+
+          {
+            echo "Automatic monthly dm+d refresh. Please review before merging."
+            echo
+            cat summary.md
+            echo
+            if [ "$OK" = true ]; then
+              echo "**Checks:** build, fingerprint self-test and crypto cross-check all passed."
+            else
+              echo "**Checks: the build failed.** Usually this means dm+d now gives a medicine a different controlled-drug schedule. Check the legislation, then update \`cd_schedule\` in \`data/medicines.csv\` on this branch."
+            fi
+            echo
+            echo '<details><summary>Build output</summary>'
+            echo
+            echo '```'
+            tail -n 60 build.log
+            echo '```'
+            echo '</details>'
+          } > body.md
+
+          if [ "$OK" = true ]; then
+            gh pr create --base main --head "$branch" --title "Refresh dm+d to release $RELEASE" --body-file body.md && exit 0
+            # creating pull requests can be switched off for Actions; fall back to an issue with a link
+            echo >> body.md; echo "Compare and open a pull request: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/main...$branch" >> body.md
+            gh issue create --title "dm+d $RELEASE is ready to merge" --body-file body.md
+          else
+            echo >> body.md; echo "Branch with the refresh: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/main...$branch" >> body.md
+            gh issue create --title "dm+d $RELEASE: the build fails and needs review" --body-file body.md
+          fi

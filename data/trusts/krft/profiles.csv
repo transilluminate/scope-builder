@@ -1,0 +1,7 @@
+profile_id,name,short,group,description,default,source,reviewed
+core,"Core (any prescriber, any area)",Core,Everyone,Pan-hospital emergency and life-saving drugs and basic analgesia: the baseline any prescriber could be expected to cover.,Y,AI-drafted (26 Nov 2026),
+ed-resus,ED Resus,Resus,Emergency Department,Resuscitation room: time-critical and high-acuity care.,,Converted from AI-drafted area marks (26 Nov 2026),
+ed-majors-minors,ED majors & minors,ED,Emergency Department,Majors and minors streams of the Emergency Department.,,Converted from AI-drafted area marks (26 Nov 2026),
+utc,Urgent Treatment Centre,UTC,Urgent & same-day care,Walk-in minor illness and injury.,,Converted from AI-drafted area marks (26 Nov 2026),
+sdec,Same Day Emergency Care,SDEC,Urgent & same-day care,Ambulatory same-day assessment and treatment (medical SDEC).,,Converted from AI-drafted area marks (26 Nov 2026),
+amu,Acute Medical Unit,AMU,Acute medicine,Acute medical admissions in the first 72 hours.,,Converted from AI-drafted area marks (26 Nov 2026),
